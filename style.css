@@ -61,7 +61,8 @@ body {
   display: flex;
   gap: 20px;
   width: min(1320px, 96vw);
-  height: min(820px, 92vh);
+  height: min(820px, 92svh);
+  max-height: 92dvh;
   transform-origin: center center;
   transition: transform 0.15s ease, gap 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
   position: relative;
@@ -103,6 +104,7 @@ body {
   width: 100%;
   min-width: 0;
   height: 100%;
+  min-height: 0;
   flex-shrink: 0;
   transition: opacity 0.3s ease;
 }
@@ -1228,7 +1230,8 @@ body {
 @media (max-width: 800px) {
   .wrapper {
     width: 96vw;
-    height: 92vh;
+    height: 92svh;
+    max-height: 92dvh;
     gap: 10px;
   }
 
@@ -1241,5 +1244,154 @@ body {
 
   .lyrics-view {
     padding: 8px 10px 12px 10px;
+  }
+}
+
+@media (max-width: 1000px) {
+  .wrapper {
+    width: 97vw;
+    height: 92svh;
+    max-height: 92dvh;
+    gap: 10px;
+  }
+
+  .left,
+  .right,
+  .wrapper.lyrics-mode .left,
+  .wrapper.lyrics-mode .right {
+    width: calc((100% - 10px) / 2);
+  }
+
+  .cover-art {
+    width: clamp(180px, min(calc(100% - 92px), calc(54dvh)), calc(100% - 64px));
+  }
+
+  .song-info-wrapper {
+    padding: 0 8px;
+  }
+
+  .song-title-row > div:nth-child(2) {
+    font-size: 1.05rem;
+  }
+
+  .song-artist {
+    font-size: 0.95rem;
+  }
+
+  .progress-wrapper {
+    height: 30px;
+    margin-bottom: 4px;
+  }
+
+  .progress-times {
+    font-size: 0.78rem;
+  }
+
+  .player-controls-wrapper {
+    height: 64px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+
+  .controls button {
+    font-size: 2.3rem;
+  }
+
+  .controls .play-button {
+    font-size: 3.2rem;
+  }
+
+  .controls .side-button {
+    font-size: 1.4rem;
+  }
+
+  #lyricsButton {
+    font-size: 1.5rem;
+    bottom: 10px;
+    right: 10px;
+  }
+}
+
+@media (max-height: 840px) {
+  .left-inner {
+    flex: 0 1 auto;
+    gap: 8px;
+  }
+
+  .cover-art {
+    width: clamp(170px, min(calc(100% - 88px), calc(52dvh)), calc(100% - 60px));
+  }
+
+  .song-title-row > div:nth-child(2) {
+    font-size: 1rem;
+  }
+
+  .song-artist {
+    font-size: 0.88rem;
+  }
+
+  .progress-wrapper {
+    height: 28px;
+    margin-top: 2px;
+    margin-bottom: 4px;
+  }
+
+  .player-controls-wrapper {
+    height: 58px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+  }
+
+  .controls button {
+    font-size: 2.1rem;
+  }
+
+  .controls .play-button {
+    font-size: 2.9rem;
+  }
+
+  .controls .side-button {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 800px) and (max-height: 760px) {
+  .cover-art {
+    width: clamp(150px, min(calc(100% - 96px), calc(47dvh)), calc(100% - 66px));
+  }
+
+  .left-inner {
+    flex: 0 1 auto;
+  }
+
+  .song-title-row > div:nth-child(2) {
+    font-size: 0.95rem;
+  }
+
+  .song-artist {
+    font-size: 0.82rem;
+  }
+
+  .progress-times {
+    font-size: 0.72rem;
+  }
+
+  .player-controls-wrapper {
+    height: 52px;
+    margin-top: 6px;
+    margin-bottom: 6px;
+  }
+
+  .controls button {
+    font-size: 1.9rem;
+  }
+
+  .controls .play-button {
+    font-size: 2.6rem;
+  }
+
+  .controls #repeatButton,
+  .controls #muteButton {
+    bottom: 6px;
   }
 }
