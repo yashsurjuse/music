@@ -114,7 +114,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
   gap: 10px;
@@ -188,7 +188,7 @@ body {
 
 .cover-art {
   position: relative;
-  width: calc(100% - 60px);
+  width: clamp(170px, min(calc(100% - 60px), calc(56dvh)), calc(100% - 40px));
   height: auto;
   max-height: none;
   aspect-ratio: 1 / 1;
@@ -198,7 +198,7 @@ body {
   justify-content: center;
   align-items: center;
   overflow: hidden;
-  flex-shrink: 0;
+  flex-shrink: 1;
   align-self: center;
   transition: background-color 0.4s ease;
 }
@@ -275,7 +275,7 @@ body {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-size: 1.2rem;
+  font-size: clamp(0.96rem, 2.25dvh, 1.2rem);
   font-weight: 600;
   line-height: 1.2;
   margin: 0;
@@ -290,7 +290,7 @@ body {
   white-space: nowrap;
   text-overflow: ellipsis;
   width: 100%;
-  font-size: 1.1rem;
+  font-size: clamp(0.84rem, 2.05dvh, 1.1rem);
   line-height: 1.2;
   margin: 0;
 }
@@ -332,10 +332,10 @@ body {
 
 .progress-wrapper {
   width: 100%;
-  height: 35px;
+  height: clamp(26px, 4.7dvh, 35px);
   display: flex;
   flex-direction: column;
-  margin-bottom: 8px;
+  margin-bottom: clamp(4px, 1.1dvh, 8px);
   margin-top: 0;
   flex-shrink: 0;
 }
@@ -403,7 +403,7 @@ body {
   display: flex;
   justify-content: space-between;
   color: rgba(var(--cb), 0.5);
-  font-size: 0.9rem;
+  font-size: clamp(0.72rem, 1.55dvh, 0.9rem);
   font-family: "Inconsolata", monospace;
 }
 
@@ -412,10 +412,10 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 18px;
-  margin-top: 18px;
+  margin-bottom: clamp(6px, 1.9dvh, 18px);
+  margin-top: clamp(6px, 1.9dvh, 18px);
   flex-shrink: 0;
-  height: 80px;
+  height: clamp(54px, 10.6dvh, 80px);
 }
 
 .controls {
@@ -457,7 +457,7 @@ body {
   background: none;
   border: none;
   color: rgba(var(--cb), 0.8);
-  font-size: 3rem;
+  font-size: clamp(2rem, 4dvh, 3rem);
   cursor: pointer;
   transition: 0.25s ease, transform 0.2s ease, filter 0.2s ease;
 }
@@ -468,7 +468,7 @@ body {
 }
 
 .controls .side-button {
-  font-size: 1.8rem;
+  font-size: clamp(1.2rem, 2.3dvh, 1.8rem);
   color: rgba(var(--cb), 0.95);
 }
 .controls .side-button.active {
@@ -486,7 +486,7 @@ body {
 }
 
 .controls .play-button {
-  font-size: 4rem;
+  font-size: clamp(2.7rem, 5.6dvh, 4rem);
 }
 
 .right-search {
@@ -1309,49 +1309,6 @@ body {
     font-size: 1.5rem;
     bottom: 10px;
     right: 10px;
-  }
-}
-
-@media (max-height: 840px) {
-  .left-inner {
-    flex: 0 1 auto;
-    gap: 8px;
-  }
-
-  .cover-art {
-    width: clamp(170px, min(calc(100% - 88px), calc(52dvh)), calc(100% - 60px));
-  }
-
-  .song-title-row > div:nth-child(2) {
-    font-size: 1rem;
-  }
-
-  .song-artist {
-    font-size: 0.88rem;
-  }
-
-  .progress-wrapper {
-    height: 28px;
-    margin-top: 2px;
-    margin-bottom: 4px;
-  }
-
-  .player-controls-wrapper {
-    height: 58px;
-    margin-top: 8px;
-    margin-bottom: 8px;
-  }
-
-  .controls button {
-    font-size: 2.1rem;
-  }
-
-  .controls .play-button {
-    font-size: 2.9rem;
-  }
-
-  .controls .side-button {
-    font-size: 1.25rem;
   }
 }
 
