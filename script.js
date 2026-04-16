@@ -1,11 +1,11 @@
 (() => {
   const PLAYLIST_KEY = "music_app_playlists_v1";
   const LIKED_KEY = "music_app_liked_songs_v1";
-  const PLAYER_STATE_KEY = "music_app_player_state_v1";
   const LIKED_PLAYLIST_ID = "__liked_songs__";
   const SEARCH_API = "https://maus.qqdl.site/search/?s=";
   const TRACK_API = "https://katze.qqdl.site/track/?quality=LOSSLESS&id=";
   const INFO_API = "https://maus.qqdl.site/info/?id=";
+  const CORS_PROXY = "https://api.allorigins.win/raw?url=";
   const COLORS = [
     "#ffb3ba", "#ffccb3", "#ffffb3", "#b3e5b3", "#b3d9ff",
     "#ffb3e6", "#ffcc99", "#ffff99", "#99e699", "#99ccff",
@@ -33,7 +33,6 @@
     lyricsLines: [],
     activeLyricsIndex: -1,
     eqAnimationTimer: null,
-    lastPersistSecond: -1,
     queueLocked: true,
     playlistLocked: true,
     isEditMode: false,
@@ -98,6 +97,43 @@
     lockPlaylistBtn: document.getElementById("lockPlaylistBtn"),
     lockQueueBtn: document.getElementById("lockQueueBtn"),
     colorPickerContainer: document.getElementById("colorPickerContainer"),
+    loadingOverlay: document.getElementById("loadingOverlay"),
+    loadingText: document.getElementById("loadingText"),
+  };
+
+  let loadingPopupCount = 0;
+  let loadingTimeoutId = null;
+
+  const showLoadingPopup = (message = "Loading...") => {
+    if (!el.loadingOverlay || !el.loadingText) return;
+
+    loadingPopupCount += 1;
+
+    if (loadingPopupCount === 1) {
+      el.loadingText.textContent = message;
+      el.loadingOverlay.classList.add("visible");
+      el.loadingOverlay.setAttribute("aria-hidden", "false");
+
+      loadingTimeoutId = window.setTimeout(() => {
+        el.loadingText.textContent = "Timed out. Try reloading.";
+      }, 30000);
+    }
+  };
+
+  const hideLoadingPopup = () => {
+    if (!el.loadingOverlay || !el.loadingText) return;
+
+    loadingPopupCount = Math.max(loadingPopupCount - 1, 0);
+    if (loadingPopupCount > 0) return;
+
+    if (loadingTimeoutId) {
+      clearTimeout(loadingTimeoutId);
+      loadingTimeoutId = null;
+    }
+
+    el.loadingOverlay.classList.remove("visible");
+    el.loadingOverlay.setAttribute("aria-hidden", "true");
+    el.loadingText.textContent = "Loading...";
   };
 
   const formatTime = (seconds) => {
@@ -128,100 +164,37 @@
     }
   };
 
-  const fetchTrackStreamUrl = async (trackId) => {
-    const response = await fetch(`${TRACK_API}${encodeURIComponent(trackId)}`);
-    if (!response.ok) return "";
-    const payload = await response.json();
-    const manifest = decodeBase64Json(payload?.data?.manifest || "");
-    return manifest?.urls?.[0] || "";
-  };
+  const buildProxyUrl = (url) => `${CORS_PROXY}${encodeURIComponent(url)}`;
 
-  const fetchTrackInfo = async (trackId) => {
-    const response = await fetch(`${INFO_API}${encodeURIComponent(trackId)}`);
-    if (!response.ok) return null;
-    const payload = await response.json();
-    return payload?.data || null;
-  };
-
-  const savePlayerState = () => {
+  const fetchJsonWithCorsFallback = async (url, signal) => {
     try {
-      const current = state.queue[state.currentIndex] || null;
-      const payload = {
-        queue: state.queue,
-        currentIndex: state.currentIndex,
-        currentTime: audio.currentTime || 0,
-        repeat: state.repeat,
-        lyricsVisible: state.lyricsVisible,
-        currentTrackId: current?.trackId || null,
-      };
-      localStorage.setItem(PLAYER_STATE_KEY, JSON.stringify(payload));
-    } catch {
-      // ignore persistence failures
+      const response = await fetch(url, signal ? { signal } : undefined);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } catch (primaryError) {
+      if (signal?.aborted) throw primaryError;
+      const fallbackResponse = await fetch(buildProxyUrl(url), signal ? { signal } : undefined);
+      if (!fallbackResponse.ok) throw primaryError;
+      return await fallbackResponse.json();
     }
   };
 
-  const restorePlayerState = async () => {
+  const fetchTrackStreamUrl = async (trackId) => {
     try {
-      const parsed = JSON.parse(localStorage.getItem(PLAYER_STATE_KEY) || "null");
-      if (!parsed || !Array.isArray(parsed.queue) || !parsed.queue.length) return;
-
-      state.queue = parsed.queue.map(toTrack);
-      state.currentIndex = Math.min(
-        Math.max(Number(parsed.currentIndex || 0), 0),
-        state.queue.length - 1
-      );
-      state.repeat = Boolean(parsed.repeat);
-      el.repeatButton.classList.toggle("active", state.repeat);
-
-      const track = state.queue[state.currentIndex];
-      if (!track?.trackId) {
-        renderQueue();
-        return;
-      }
-
-      const info = await fetchTrackInfo(track.trackId);
-      if (info) {
-        track.trackName = info.title || track.trackName;
-        track.artistName = info.artist?.name || track.artistName;
-        if (info.album?.cover) {
-          track.artworkUrl100 = `https://resources.tidal.com/images/${String(info.album.cover).replace(/-/g, "/")}/640x640.jpg`;
-        }
-      }
-
-      if (!track.previewUrl) {
-        track.previewUrl = await fetchTrackStreamUrl(track.trackId);
-      }
-
-      if (track.previewUrl) {
-        audio.src = track.previewUrl;
-        setSongInfo(track);
-        setActiveTrackInLists();
-        renderQueue();
-        loadLyrics(track);
-
-        const restoreTime = Math.max(0, Number(parsed.currentTime || 0));
-        const applyTime = () => {
-          if (Number.isFinite(audio.duration) && audio.duration > 0) {
-            audio.currentTime = Math.min(restoreTime, Math.max(audio.duration - 0.25, 0));
-          } else {
-            audio.currentTime = restoreTime;
-          }
-        };
-
-        if (audio.readyState >= 1) {
-          applyTime();
-        } else {
-          audio.addEventListener("loadedmetadata", applyTime, { once: true });
-        }
-      }
-
-      state.lyricsVisible = Boolean(parsed.lyricsVisible);
-      setView(state.lyricsVisible ? "lyrics" : "search");
-      el.wrapper.classList.toggle("lyrics-mode", state.lyricsVisible);
-      el.lyricsButton.classList.toggle("active", state.lyricsVisible);
-      updateControlState();
+      const payload = await fetchJsonWithCorsFallback(`${TRACK_API}${encodeURIComponent(trackId)}`);
+      const manifest = decodeBase64Json(payload?.data?.manifest || "");
+      return manifest?.urls?.[0] || "";
     } catch {
-      // ignore restore failures
+      return "";
+    }
+  };
+
+  const fetchTrackInfo = async (trackId) => {
+    try {
+      const payload = await fetchJsonWithCorsFallback(`${INFO_API}${encodeURIComponent(trackId)}`);
+      return payload?.data || null;
+    } catch {
+      return null;
     }
   };
 
@@ -630,6 +603,7 @@
     el.playlistDescInput.value = playlist.description;
 
     const isLikedPlaylist = playlist.id === LIKED_PLAYLIST_ID;
+    el.playlistColorDot.style.display = isLikedPlaylist ? "none" : "inline-block";
     el.playlistViewMode.style.display = "flex";
     el.playlistEditMode.style.display = state.isEditMode && !isLikedPlaylist ? "flex" : "none";
     el.toggleEditModeBtn.style.display = isLikedPlaylist ? "none" : "inline-flex";
@@ -744,13 +718,13 @@
 
     const controller = new AbortController();
     state[abortKey] = controller;
+    showLoadingPopup("Searching...");
 
     try {
-      const response = await fetch(`${SEARCH_API}${encodeURIComponent(normalized)}`, {
-        signal: controller.signal,
-      });
-      if (!response.ok) throw new Error("search failed");
-      const data = await response.json();
+      const data = await fetchJsonWithCorsFallback(
+        `${SEARCH_API}${encodeURIComponent(normalized)}`,
+        controller.signal
+      );
       const items = data?.data?.items || [];
       const tracks = items.filter((x) => x.allowStreaming !== false).slice(0, 35).map(toTrack);
 
@@ -770,6 +744,8 @@
         state.playlistSearchResults = [];
         renderPlaylistAddResults();
       }
+    } finally {
+      hideLoadingPopup();
     }
   };
 
@@ -942,34 +918,40 @@
     const track = state.queue[state.currentIndex];
     if (!track?.trackId) return;
 
-    const info = await fetchTrackInfo(track.trackId);
-    if (info) {
-      track.trackName = info.title || track.trackName;
-      track.artistName = info.artist?.name || track.artistName;
-      if (info.album?.cover) {
-        track.artworkUrl100 = `https://resources.tidal.com/images/${String(info.album.cover).replace(/-/g, "/")}/640x640.jpg`;
-      }
-    }
-
-    if (!track.previewUrl) {
-      track.previewUrl = await fetchTrackStreamUrl(track.trackId);
-    }
-
-    if (!track.previewUrl) return;
-
-    audio.src = track.previewUrl;
-    setSongInfo(track);
-    setActiveTrackInLists();
-    loadLyrics(track);
+    showLoadingPopup("Loading track...");
 
     try {
-      await audio.play();
-    } catch {
-      setPlayingIcon(false);
-      el.eqVisualizer.classList.remove("playing");
-    }
+      const info = await fetchTrackInfo(track.trackId);
+      if (info) {
+        track.trackName = info.title || track.trackName;
+        track.artistName = info.artist?.name || track.artistName;
+        if (info.album?.cover) {
+          track.artworkUrl100 = `https://resources.tidal.com/images/${String(info.album.cover).replace(/-/g, "/")}/640x640.jpg`;
+        }
+      }
 
-    updateControlState();
+      if (!track.previewUrl) {
+        track.previewUrl = await fetchTrackStreamUrl(track.trackId);
+      }
+
+      if (!track.previewUrl) return;
+
+      audio.src = track.previewUrl;
+      setSongInfo(track);
+      setActiveTrackInLists();
+      loadLyrics(track);
+
+      try {
+        await audio.play();
+      } catch {
+        setPlayingIcon(false);
+        el.eqVisualizer.classList.remove("playing");
+      }
+
+      updateControlState();
+    } finally {
+      hideLoadingPopup();
+    }
   };
 
   const createPlaylist = () => {
@@ -1068,7 +1050,6 @@
     if (!audio.src) return;
     state.repeat = !state.repeat;
     el.repeatButton.classList.toggle("active", state.repeat);
-    savePlayerState();
   });
 
   el.lyricsButton.addEventListener("click", () => {
@@ -1152,11 +1133,6 @@
 
     updateLyricsPlayback(current);
 
-    const second = Math.floor(current);
-    if (second !== state.lastPersistSecond) {
-      state.lastPersistSecond = second;
-      savePlayerState();
-    }
   });
 
   audio.addEventListener("loadedmetadata", () => {
@@ -1200,10 +1176,7 @@
 
   el.progressBar.addEventListener("pointerup", () => {
     setTimeout(() => el.progressBar.classList.remove("visible"), 180);
-    savePlayerState();
   });
-
-  window.addEventListener("beforeunload", savePlayerState);
 
   loadPlaylists();
   loadLikedSongs();
@@ -1214,7 +1187,8 @@
   renderPlaylistAddResults();
   updateControlState();
   setView("search");
-  restorePlayerState();
+
+  localStorage.removeItem("music_app_player_state_v1");
 
   el.currentTime.textContent = "0:00";
   el.duration.textContent = "0:00";
